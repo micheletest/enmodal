@@ -2,7 +2,27 @@
 
 enmodal is a browser-based service for transit planning and analysis. users can quickly mockup transit services (or “scenario plan” modifications to real-world systems) in their browser. enmodal runs server-side modeling algorithms to analyze the impact of different service modifications, using population and employment data.
 
-## Set up
+**Credit:** This project is based on the original work by [jpwright](https://github.com/jpwright/enmodal).
+
+## Docker Installation (Recommended)
+
+The easiest way to run enmodal is using Docker.
+
+1.  **Prerequisites**: Ensure you have Docker and Docker Compose installed on your machine.
+2.  **Build and Run**:
+    ```bash
+    docker-compose up --build
+    ```
+3.  **Access**: Open your browser to `http://localhost:5050`.
+
+**Technical Details:**
+
+- **Architecture**: The application runs in two containers: `web` (Flask/Python) and `db` (PostGIS/PostgreSQL).
+- **Configuration**: A `docker-entrypoint.sh` script automatically configures `settings.cfg` using environment variables defined in `docker-compose.yml`. It also handles waiting for the database to become ready before starting the server.
+- **Persistence**: Database data is persisted in a Docker volume named `db_data`.
+- **Environment Variables**: Key settings like database credentials and secret keys are managed via `docker-compose.yml`.
+
+## Manual Set up
 
 Skip to: [Windows](#windows), [Mac](#mac), [Ubuntu](#ubuntu)
 
@@ -182,3 +202,11 @@ Navigate to `http://localhost:5050` in your browser and get started!
 ## Populating dggrid database
 
 Generating the dggrid database (which contains the hexagonal bins of population and employment data) is cumbersome and not yet documented. A copy of the database will eventually be made available for download. The scripts to generate the database yourself are in the `tools` directory.
+
+## TODO / Known Issues
+
+- **Database Connection Pooling**: Implement `psycopg2.pool` in `EnmodalMap.py` to prevent connection leaks during high load.
+- **User Authentication**: Complete the implementation of the `User` class in `EnmodalSessions.py`, add the `users` table in `tools/set_up_db.py`, and finalize the `/login` and `/register` endpoints.
+- **Session Saving**: Optimize the client-side `session_save` logic to reduce redundant server round-trips.
+- **UI Race Conditions**: Fix issues where UI elements (like "New Line") are interactive before the session is fully initialized.
+- **My Maps**: Create a dashboard for logged-in users to manage their saved sessions.
