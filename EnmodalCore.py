@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, after_this_request, escape, Blueprint
+from flask import Flask, render_template, request, after_this_request, Blueprint
+from markupsafe import escape
 
 import psycopg2
 import psycopg2.extras
@@ -20,7 +21,10 @@ import multiprocessing
 import time
 
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'lib', 'transit')))
+
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "lib", "transit"))
+)
 import Transit
 import TransitGIS
 import TransitModel
@@ -31,47 +35,61 @@ from EnmodalSessions import *
 import configparser
 
 config = configparser.RawConfigParser()
-config.read(os.path.abspath(os.path.join(os.path.dirname(__file__), 'settings.cfg')))
-PORT = int(config.get('flask', 'port_http'))
+config.read(os.path.abspath(os.path.join(os.path.dirname(__file__), "settings.cfg")))
+PORT = int(config.get("flask", "port_http"))
 
-SESSIONS_HOST = config.get('sessions', 'host')
-SESSIONS_PORT = config.get('sessions', 'port')
-SESSIONS_DBNAME = config.get('sessions', 'dbname')
-SESSIONS_USER = config.get('sessions', 'user')
-SESSIONS_PASSWORD = config.get('sessions', 'password')
-SESSIONS_CONN_STRING = "host='"+SESSIONS_HOST+"' port='"+SESSIONS_PORT+"' dbname='"+SESSIONS_DBNAME+"' user='"+SESSIONS_USER+"' password='"+SESSIONS_PASSWORD+"'"
-SESSIONS_SECRET_KEY_PUBLIC = int(config.get('sessions', 'secret_key_public'), 16)
-SESSIONS_SECRET_KEY_PRIVATE = int(config.get('sessions', 'secret_key_private'), 16)
-SESSION_EXPIRATION_TIME = int(config.get('sessions', 'expiration_time'))
+SESSIONS_HOST = config.get("sessions", "host")
+SESSIONS_PORT = config.get("sessions", "port")
+SESSIONS_DBNAME = config.get("sessions", "dbname")
+SESSIONS_USER = config.get("sessions", "user")
+SESSIONS_PASSWORD = config.get("sessions", "password")
+SESSIONS_CONN_STRING = (
+    "host='"
+    + SESSIONS_HOST
+    + "' port='"
+    + SESSIONS_PORT
+    + "' dbname='"
+    + SESSIONS_DBNAME
+    + "' user='"
+    + SESSIONS_USER
+    + "' password='"
+    + SESSIONS_PASSWORD
+    + "'"
+)
+SESSIONS_SECRET_KEY_PUBLIC = int(config.get("sessions", "secret_key_public"), 16)
+SESSIONS_SECRET_KEY_PRIVATE = int(config.get("sessions", "secret_key_private"), 16)
+SESSION_EXPIRATION_TIME = int(config.get("sessions", "expiration_time"))
 
-enmodal = Blueprint('enmodal', __name__)
+enmodal = Blueprint("enmodal", __name__)
+
 
 def gzipped(f):
     @functools.wraps(f)
     def view_func(*args, **kwargs):
         @after_this_request
         def zipper(response):
-            accept_encoding = request.headers.get('Accept-Encoding', '')
+            accept_encoding = request.headers.get("Accept-Encoding", "")
 
-            if 'gzip' not in accept_encoding.lower():
+            if "gzip" not in accept_encoding.lower():
                 return response
 
             response.direct_passthrough = False
 
-            if (response.status_code < 200 or
-                response.status_code >= 300 or
-                'Content-Encoding' in response.headers):
+            if (
+                response.status_code < 200
+                or response.status_code >= 300
+                or "Content-Encoding" in response.headers
+            ):
                 return response
             gzip_buffer = IO()
-            gzip_file = gzip.GzipFile(mode='wb', 
-                                      fileobj=gzip_buffer)
+            gzip_file = gzip.GzipFile(mode="wb", fileobj=gzip_buffer)
             gzip_file.write(response.data)
             gzip_file.close()
 
             response.data = gzip_buffer.getvalue()
-            response.headers['Content-Encoding'] = 'gzip'
-            response.headers['Vary'] = 'Accept-Encoding'
-            response.headers['Content-Length'] = len(response.data)
+            response.headers["Content-Encoding"] = "gzip"
+            response.headers["Vary"] = "Accept-Encoding"
+            response.headers["Content-Length"] = len(response.data)
 
             return response
 
@@ -79,26 +97,29 @@ def gzipped(f):
 
     return view_func
 
-@enmodal.route('/')
+
+@enmodal.route("/")
 def route_main():
-    return render_template('app.html')
+    return render_template("app.html")
 
-@enmodal.route('/view')
+
+@enmodal.route("/view")
 def view():
-    return render_template('view.html')
+    return render_template("view.html")
 
-@enmodal.route('/station_add')
+
+@enmodal.route("/station_add")
 def route_station_add():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
+    service_id = request.args.get("service_id")
 
-    lat = request.args.get('lat')
-    lng = request.args.get('lng')
-    station_id = request.args.get('station_id')
+    lat = request.args.get("lat")
+    lng = request.args.get("lng")
+    station_id = request.args.get("station_id")
     m = session_manager.auth_by_key(h).session.map
 
     for service in m.services:
@@ -109,28 +130,30 @@ def route_station_add():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/lat_lng_info')
+
+@enmodal.route("/lat_lng_info")
 def route_lat_lng_info():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    lat = request.args.get('lat')
-    lng = request.args.get('lng')
+    lat = request.args.get("lat")
+    lng = request.args.get("lng")
 
     station = TransitGIS.station_constructor(0, lat, lng)
     return station.to_json()
 
-@enmodal.route('/station_remove')
+
+@enmodal.route("/station_remove")
 def route_station_remove():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    station_id = request.args.get('station_id')
+    service_id = request.args.get("service_id")
+    station_id = request.args.get("station_id")
 
     m = session_manager.auth_by_key(h).session.map
     for s in m.services:
@@ -144,21 +167,22 @@ def route_station_remove():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/station_update')
+
+@enmodal.route("/station_update")
 def route_station_update():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    station_id = request.args.get('station_id')
-    name = request.args.get('name')
-    location = request.args.get('location')
-    streets = request.args.get('streets')
-    neighborhood = request.args.get('neighborhood')
-    locality = request.args.get('locality')
-    region = request.args.get('region')
+    service_id = request.args.get("service_id")
+    station_id = request.args.get("station_id")
+    name = request.args.get("name")
+    location = request.args.get("location")
+    streets = request.args.get("streets")
+    neighborhood = request.args.get("neighborhood")
+    locality = request.args.get("locality")
+    region = request.args.get("region")
 
     m = session_manager.auth_by_key(h).session.map
     for s in m.services:
@@ -170,11 +194,14 @@ def route_station_update():
                     if name != None:
                         station.name = name
                     if location != None:
-                        location_comps = location.split(',')
-                        station.location = [float(location_comps[0]), float(location_comps[1])]
+                        location_comps = location.split(",")
+                        station.location = [
+                            float(location_comps[0]),
+                            float(location_comps[1]),
+                        ]
                         station.clear_hexagons()
                     if streets != None:
-                        street_comps = streets.split(',')
+                        street_comps = streets.split(",")
                         station.streets = street_comps
                     if neighborhood != None:
                         station.neighborhood = neighborhood
@@ -185,28 +212,30 @@ def route_station_update():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/transfer_add')
+
+@enmodal.route("/transfer_add")
 def route_transfer_add():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    station_1_id = request.args.get('station_1_id')
-    station_2_id = request.args.get('station_2_id')
+    service_id = request.args.get("service_id")
+    station_1_id = request.args.get("station_1_id")
+    station_2_id = request.args.get("station_2_id")
 
-@enmodal.route('/stop_add')
+
+@enmodal.route("/stop_add")
 def route_stop_add():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    line_id = request.args.get('line_id')
-    station_id = request.args.get('station_id')
-    stop_id = request.args.get('stop_id')
+    service_id = request.args.get("service_id")
+    line_id = request.args.get("line_id")
+    station_id = request.args.get("station_id")
+    stop_id = request.args.get("stop_id")
 
     m = session_manager.auth_by_key(h).session.map
     for service in m.services:
@@ -217,26 +246,26 @@ def route_stop_add():
                     line_exists = True
                     line_to_use = line
 
-            if (line_exists):
+            if line_exists:
                 if service.has_station(int(station_id)):
                     station = service.get_station_by_id(int(station_id))
                     stop = Transit.Stop(int(stop_id), station.sid)
                     line_to_use.add_stop(stop)
                     return stop.to_json()
 
-
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/stop_remove')
+
+@enmodal.route("/stop_remove")
 def route_stop_remove():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    line_id = request.args.get('line_id')
-    stop_id = request.args.get('stop_id')
+    service_id = request.args.get("service_id")
+    line_id = request.args.get("line_id")
+    stop_id = request.args.get("stop_id")
 
     m = session_manager.auth_by_key(h).session.map
     for s in m.services:
@@ -252,17 +281,18 @@ def route_stop_remove():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/stop_update_station')
+
+@enmodal.route("/stop_update_station")
 def route_stop_update_station():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    line_id = request.args.get('line_id')
-    station_id = request.args.get('station_id')
-    stop_id = request.args.get('stop_id')
+    service_id = request.args.get("service_id")
+    line_id = request.args.get("line_id")
+    station_id = request.args.get("station_id")
+    stop_id = request.args.get("stop_id")
 
     m = session_manager.auth_by_key(h).session.map
     for s in m.services:
@@ -279,20 +309,21 @@ def route_stop_update_station():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/line_add')
+
+@enmodal.route("/line_add")
 def route_line_add():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    name = request.args.get('name')
-    full_name = request.args.get('full_name')
-    color_bg = request.args.get('color_bg')
-    color_fg = request.args.get('color_fg')
+    name = request.args.get("name")
+    full_name = request.args.get("full_name")
+    color_bg = request.args.get("color_bg")
+    color_fg = request.args.get("color_fg")
 
-    service_id = request.args.get('service_id')
-    line_id = request.args.get('line_id')
+    service_id = request.args.get("service_id")
+    line_id = request.args.get("line_id")
 
     m = session_manager.auth_by_key(h).session.map
     line = Transit.Line(int(line_id), name)
@@ -307,19 +338,20 @@ def route_line_add():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/line_update')
+
+@enmodal.route("/line_update")
 def route_line_update():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    line_id = request.args.get('line_id')
-    name = request.args.get('name')
-    full_name = request.args.get('full_name')
-    color_bg = request.args.get('color_bg')
-    color_fg = request.args.get('color_fg')
+    service_id = request.args.get("service_id")
+    line_id = request.args.get("line_id")
+    name = request.args.get("name")
+    full_name = request.args.get("full_name")
+    color_bg = request.args.get("color_bg")
+    color_fg = request.args.get("color_fg")
 
     m = session_manager.auth_by_key(h).session.map
     for s in m.services:
@@ -337,20 +369,20 @@ def route_line_update():
                     if color_fg != None:
                         line.color_fg = color_fg
 
-
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/line_info')
+
+@enmodal.route("/line_info")
 def route_line_info():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    line_id = request.args.get('line_id')
-    line_name = request.args.get('line_name')
+    line_id = request.args.get("line_id")
+    line_name = request.args.get("line_name")
 
-    sid = request.args.get('id')
+    sid = request.args.get("id")
     m = session_manager.auth_by_key(h).session.map
     for s in m.services:
         for l in s.lines:
@@ -359,20 +391,21 @@ def route_line_info():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/edge_add')
+
+@enmodal.route("/edge_add")
 def route_edge_add():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    line_id = request.args.get('line_id')
-    stop_1_id = request.args.get('stop_1_id')
-    stop_2_id = request.args.get('stop_2_id')
-    edge_id = request.args.get('edge_id')
+    service_id = request.args.get("service_id")
+    line_id = request.args.get("line_id")
+    stop_1_id = request.args.get("stop_1_id")
+    stop_2_id = request.args.get("stop_2_id")
+    edge_id = request.args.get("edge_id")
 
-    if (stop_1_id == stop_2_id):
+    if stop_1_id == stop_2_id:
         return json.dumps({"error": "Duplicate Stop IDs"})
 
     m = session_manager.auth_by_key(h).session.map
@@ -388,7 +421,7 @@ def route_edge_add():
 
             # Look for matching stops.
             stops_found = 0
-            if (line_exists):
+            if line_exists:
                 for stop in line_to_use.stops:
                     if stop_1_id == str(stop.sid):
                         stop_1 = stop
@@ -400,7 +433,7 @@ def route_edge_add():
                 return json.dumps({"error": "Line Not Found"})
 
             # Add the edge.
-            if (stops_found == 2):
+            if stops_found == 2:
                 edge = Transit.Edge(int(edge_id), [stop_1_id, stop_2_id])
                 line_to_use.add_edge(edge)
                 return edge.to_json()
@@ -409,16 +442,17 @@ def route_edge_add():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/edge_remove')
+
+@enmodal.route("/edge_remove")
 def route_edge_remove():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    line_id = request.args.get('line_id')
-    edge_id = request.args.get('edge_id')
+    service_id = request.args.get("service_id")
+    line_id = request.args.get("line_id")
+    edge_id = request.args.get("edge_id")
 
     m = session_manager.auth_by_key(h).session.map
     for s in m.services:
@@ -434,15 +468,16 @@ def route_edge_remove():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/service_add')
+
+@enmodal.route("/service_add")
 def route_service_add():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    name = request.args.get('name')
-    service_id = request.args.get('service_id')
+    name = request.args.get("name")
+    service_id = request.args.get("service_id")
 
     m = session_manager.auth_by_key(h).session.map
     service = Transit.Service(int(service_id), name)
@@ -450,14 +485,15 @@ def route_service_add():
 
     return service.to_json()
 
-@enmodal.route('/service_info')
+
+@enmodal.route("/service_info")
 def route_service_info():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('id')
+    service_id = request.args.get("id")
     m = session_manager.auth_by_key(h).session.map
     for s in m.services:
         if service_id == str(s.sid):
@@ -465,9 +501,10 @@ def route_service_info():
 
     return json.dumps({"error": "Invalid ID"})
 
-@enmodal.route('/map_info')
+
+@enmodal.route("/map_info")
 def route_map_info():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
@@ -475,40 +512,43 @@ def route_map_info():
     m = session_manager.auth_by_key(h).session.map
     return m.to_json()
 
-@enmodal.route('/graphviz')
-def route_graphviz():
-    return render_template('graphviz.html')
 
-@enmodal.route('/get_hexagons')
+@enmodal.route("/graphviz")
+def route_graphviz():
+    return render_template("graphviz.html")
+
+
+@enmodal.route("/get_hexagons")
 @gzipped
 def route_get_hexagons():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    lat_min = float(request.args.get('lat_min'))
-    lng_min = float(request.args.get('lng_min'))
-    lat_max = float(request.args.get('lat_max'))
-    lng_max = float(request.args.get('lng_max'))
-    
-    #bb = TransitGIS.BoundingBox(m)
+    lat_min = float(request.args.get("lat_min"))
+    lng_min = float(request.args.get("lng_min"))
+    lat_max = float(request.args.get("lat_max"))
+    lng_max = float(request.args.get("lng_max"))
+
+    # bb = TransitGIS.BoundingBox(m)
     bb = TransitGIS.BoundingBox()
     bb.set_bounds(lat_min, lat_max, lng_min, lng_max)
 
     hexagons = TransitGIS.hexagons_bb(bb)
-    #encoded = geobuf.encode(hexagons.geojson())
-    #zlib_compress = zlib.compressobj(-1, zlib.DEFLATED, -zlib.MAX_WBITS)
-    #encoded = zlib_compress.compress(json.dumps(hexagons.geojson())) + zlib_compress.flush()
-    #print "Compressing..."
-    #encoded = LZString().compressToUTF16(json.dumps(hexagons.geojson()))
-    #print "Compression done"
-    #return encoded
+    # encoded = geobuf.encode(hexagons.geojson())
+    # zlib_compress = zlib.compressobj(-1, zlib.DEFLATED, -zlib.MAX_WBITS)
+    # encoded = zlib_compress.compress(json.dumps(hexagons.geojson())) + zlib_compress.flush()
+    # print "Compressing..."
+    # encoded = LZString().compressToUTF16(json.dumps(hexagons.geojson()))
+    # print "Compression done"
+    # return encoded
     return json.dumps(hexagons.geojson())
 
-@enmodal.route('/transit_model')
+
+@enmodal.route("/transit_model")
 def route_transit_model():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
@@ -518,9 +558,10 @@ def route_transit_model():
 
     return model.ridership_json()
 
-@enmodal.route('/clear_settings')
+
+@enmodal.route("/clear_settings")
 def route_clear_settings():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
@@ -528,39 +569,48 @@ def route_clear_settings():
     m = session_manager.auth_by_key(h).session.map
     m.settings = TransitSettings.Settings()
 
-@enmodal.route('/street_path')
+
+@enmodal.route("/street_path")
 def route_street_path():
-    h = int(request.args.get('i'), 16)
+    h = int(request.args.get("i"), 16)
     e = check_for_session_errors(h)
     if e:
         return e
 
-    service_id = request.args.get('service_id')
-    station_1_lat = float(request.args.get('station_1_lat'))
-    station_1_lng = float(request.args.get('station_1_lng'))
-    station_2_lat = float(request.args.get('station_2_lat'))
-    station_2_lng = float(request.args.get('station_2_lng'))
-    
-    return json.dumps(TransitGIS.valhalla_route(station_1_lat, station_1_lng, station_2_lat, station_2_lng))
+    service_id = request.args.get("service_id")
+    station_1_lat = float(request.args.get("station_1_lat"))
+    station_1_lng = float(request.args.get("station_1_lng"))
+    station_2_lat = float(request.args.get("station_2_lat"))
+    station_2_lng = float(request.args.get("station_2_lng"))
+
+    return json.dumps(
+        TransitGIS.valhalla_route(
+            station_1_lat, station_1_lng, station_2_lat, station_2_lng
+        )
+    )
+
 
 def run_server():
     # Enable WSGI access logging via Paste
     app_logged = TransLogger(enmodal)
 
     # Mount the WSGI callable object (app) on the root directory
-    cherrypy.tree.graft(app_logged, '/')
+    cherrypy.tree.graft(app_logged, "/")
 
     # Set the configuration of the web server
-    cherrypy.config.update({
-        'engine.autoreload_on': True,
-        'log.screen': True,
-        'server.socket_port': PORT,
-        'server.socket_host': '0.0.0.0'
-    })
+    cherrypy.config.update(
+        {
+            "engine.autoreload_on": True,
+            "log.screen": True,
+            "server.socket_port": PORT,
+            "server.socket_host": "0.0.0.0",
+        }
+    )
 
     # Start the CherryPy WSGI web server
     cherrypy.engine.start()
     cherrypy.engine.block()
+
 
 if __name__ == "__main__":
     run_server()
