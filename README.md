@@ -29,9 +29,9 @@ Copy `settings.cfg.example` to a new file called `settings.cfg`, and open that f
 
 #### Set up Python
 
-Install [Python 3.8](https://www.python.org/) using the Windows installer, or other distribution of your choice.
+Install [Python 3.14.2](https://www.python.org/) using the Windows installer, or other distribution of your choice.
 
-*Make sure to select "Add Python to system PATH" when installing.*
+_Make sure to select "Add Python to system PATH" when installing._
 
 #### Install virtualenv and set up Python requirements
 
@@ -75,14 +75,14 @@ Navigate to `http://localhost:5050` in your browser and get started!
 Download this repository as a ZIP file (see Download options above) and unzip to a directory called `enmodal`. Alternatively, install [Git](https://git-scm.com/) and clone the repository:
 
     git clone https://github.com/jpwright/enmodal.git
-    
+
 #### Set up Python
 
 Open up a Terminal, navigate to the directory in which you unzipped enmodal (recommend [this tutorial](https://learn.co/lessons/bash-navigation-osx) if navigating through directories in Terminal is unfamiliar to you), and run the following commands:
 
     sudo easy_install pip
     sudo pip install virtualenv
-    
+
 #### Install virtualenv and set up Python requirements
 
     python -m venv venv
@@ -126,11 +126,11 @@ Navigate to `http://localhost:5050` in your browser and get started!
 #### Clone this repo
 
     git clone https://github.com/jpwright/enmodal.git && cd enmodal
-    
+
 #### Set up essential tools
 
     sudo apt-get install python3-setuptools python3-dev python3-pip python3-psycopg2 python3-wheel postgresql-12 postgresql-server-dev-12 build-essential wget nodejs node-grunt-cli npm
-    
+
 #### Install virtualenv and set up Python requirements
 
     python3 -m venv venv
