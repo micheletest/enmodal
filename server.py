@@ -85,6 +85,19 @@ def load_user(user):
     return User.get(user)
 
 
+@application.route("/health")
+def route_health():
+    try:
+        conn = psycopg2.connect(SESSIONS_CONN_STRING)
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.close()
+        conn.close()
+        return json.dumps({"status": "ok", "db": "connected"})
+    except Exception as e:
+        return json.dumps({"status": "error", "db": str(e)}), 500
+
+
 @application.route("/session")
 def route_session_status():
     s = EnmodalSession()
@@ -95,6 +108,12 @@ def route_session_status():
         "is_private": a.editable,
         "public_key": "{:16x}".format(a.session.public_key()),
     }
+
+    if not a.editable:
+        print(
+            f"WARNING: Session created but not editable. DB persistence might be failing. Public key: {a.session.public_key():x}"
+        )
+
     if a.editable:
         return_obj["private_key"] = "{:16x}".format(a.session.private_key())
     del a

@@ -489,10 +489,15 @@ $(function () {
   set_basemap_style("DarkGray");
   set_basemap_labels("DarkGray", true);
   init_document();
-  if (enmodal.session_id !== null) {
-    session_load();
+  if (
+    enmodal.session_id != null &&
+    enmodal.session_id !== "undefined" &&
+    enmodal.session_id !== ""
+  ) {
+    session_load().catch(function (err) {
+      console.error("Failed to load session", err);
+    });
   } else if (window.location.pathname != "/view") {
     session_new();
   }
-  push_undo_buffer();
 });

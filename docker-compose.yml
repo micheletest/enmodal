@@ -29,8 +29,12 @@ services:
       - SESSIONS_USER=enmodal
       - SESSIONS_PASSWORD=password
       - SESSIONS_SECRET_KEY_PUBLIC=0123456789abcdef
-      - SESSIONS_SECRET_KEY_PRIVATE=0123456789abcdef
+      - SESSIONS_SECRET_KEY_PRIVATE=fedcba9876543210
       - SESSIONS_EXPIRATION_TIME=3600
+    volumes:
+      - ./docker-entrypoint.sh:/docker-entrypoint.sh
+    entrypoint: ["/bin/bash", "/docker-entrypoint.sh"]
+    command: ["python", "server.py"]
     depends_on:
       - db
 
