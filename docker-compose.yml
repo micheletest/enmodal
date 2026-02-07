@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgis/postgis:12-3.0
+    restart: always
+    environment:
+      POSTGRES_USER: enmodal
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: sessions
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    restart: always
+    ports:
+      - "5050:5050"
+    environment:
+      - FLASK_PORT_HTTP=5050
+      - FLASK_SECRET_KEY=dev_secret_key
+      - FLASK_UPLOAD_FOLDER=uploads
+      - FLASK_SCREENSHOT_FOLDER=screenshots
+      - SESSIONS_HOST=db
+      - SESSIONS_PORT=5432
+      - SESSIONS_DBNAME=sessions
+      - SESSIONS_USER=enmodal
+      - SESSIONS_PASSWORD=password
+      - SESSIONS_SECRET_KEY_PUBLIC=0123456789abcdef
+      - SESSIONS_SECRET_KEY_PRIVATE=0123456789abcdef
+      - SESSIONS_EXPIRATION_TIME=3600
+    depends_on:
+      - db
+
+volumes:
+  db_data:

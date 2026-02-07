@@ -36,13 +36,22 @@ import configparser
 
 config = configparser.RawConfigParser()
 config.read(os.path.abspath(os.path.join(os.path.dirname(__file__), "settings.cfg")))
-PORT = int(config.get("flask", "port_http"))
 
-SESSIONS_HOST = config.get("sessions", "host")
-SESSIONS_PORT = config.get("sessions", "port")
-SESSIONS_DBNAME = config.get("sessions", "dbname")
-SESSIONS_USER = config.get("sessions", "user")
-SESSIONS_PASSWORD = config.get("sessions", "password")
+
+def get_conf(section, option):
+    val = os.environ.get(f"{section.upper()}_{option.upper()}")
+    if val is not None:
+        return val
+    return config.get(section, option)
+
+
+PORT = int(get_conf("flask", "port_http"))
+
+SESSIONS_HOST = get_conf("sessions", "host")
+SESSIONS_PORT = get_conf("sessions", "port")
+SESSIONS_DBNAME = get_conf("sessions", "dbname")
+SESSIONS_USER = get_conf("sessions", "user")
+SESSIONS_PASSWORD = get_conf("sessions", "password")
 SESSIONS_CONN_STRING = (
     "host='"
     + SESSIONS_HOST
@@ -56,9 +65,9 @@ SESSIONS_CONN_STRING = (
     + SESSIONS_PASSWORD
     + "'"
 )
-SESSIONS_SECRET_KEY_PUBLIC = int(config.get("sessions", "secret_key_public"), 16)
-SESSIONS_SECRET_KEY_PRIVATE = int(config.get("sessions", "secret_key_private"), 16)
-SESSION_EXPIRATION_TIME = int(config.get("sessions", "expiration_time"))
+SESSIONS_SECRET_KEY_PUBLIC = int(get_conf("sessions", "secret_key_public"), 16)
+SESSIONS_SECRET_KEY_PRIVATE = int(get_conf("sessions", "secret_key_private"), 16)
+SESSION_EXPIRATION_TIME = int(get_conf("sessions", "expiration_time"))
 
 enmodal = Blueprint("enmodal", __name__)
 
